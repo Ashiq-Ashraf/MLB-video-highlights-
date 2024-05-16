@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<!-- used bootstrap for designing muxh more interactive interface -->
+<head>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+        crossorigin="anonymous"></script>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>MLB HIGHLIGHTS(ASHIQ PROJECT)</title>
+</head>
+
+<!-- to create the interface for the user -->
+<body>
+    <div class="mainbody container-fluid w-50 mt-5 ml-5 border border-black">
+        <div class="mx-0 row mt-2 datebox container border border-black w-50">
+            <div class="mb-3">
+                <p>Enter the day to retrieve data</p>
+                <label for="exampleFormControlInput1" class="form-label">Date</label>
+                <input type="date" class="form-control" id="exampleFormControlInput1" placeholder="Enter date">
+            </div>
+            <button class="mb-2 btn btn-success" onclick="retrieveMLBData()">Retrieve MLB Data For this date</button>
+        </div>
+        <div class="row mt-5">
+            <div class="col textbox-container">
+                <label class="title" for="textBox1">Home Team Name</label>
+                <input type="text" id="textBox1">
+            </div>
+            <div class="col textbox-container">
+                <label class="title" for="textBox2">Away Team Name</label>
+                <input type="text" id="textBox2">
+            </div>
+        </div>
+        <div class="row mt-2" style="display: flex; justify-content: flex-end">
+            <div class="col">
+                <button type="button" class="btn btn-outline-dark" onclick="nextGame();">Next game for this date</button>
+            </div>
+            <div class="col">
+                <button type="button" class="btn btn-outline-dark" onclick="prevGame();">Previous game for this date</button>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col mt-5">
+                <label class="title" for="textBox">Highlight playbacks</label>
+                <input type="text" id="textBox">
+            </div>
+        </div>
+        <div class="row">
+            <div class="col mt-2">
+                <button type="button" class="btn btn-outline-dark" onclick="nH();">Next highlight for this date</button>
+            </div>
+            <div class="col mt-2">
+                <button type="button" class="btn btn-outline-dark" onclick="pH();">Previous highlight for this date</button>
+            </div>
+        </div>
+        <div class="dropbtn mt-2 mb-2">
+            <button type="button" class="btn btn-outline-dark" onclick="Video();">Run playback for this highlight</button>
+        </div>
+    </div>
+</body>
+
+<script>
+    //initiating the variables for storing the datas and also indexes to surf through the data 
+    var games = [];
+    var mlbIndex = 0;
+    var highIndex=0;
+    function retrieveMLBData() {
+        // taking the date input 
+        var startDate = document.getElementById("exampleFormControlInput1").value;
+        
+
+        // building varibales to retrieve data from the link according to the date 
+        
+        var endDate = startDate; // Same date for both start and end
+
+        var mlbgamelink = "http://statsapi.mlb.com/api/v1/schedule/games/?sportId=1&startDate=" + startDate + "&endDate=" + endDate;
+
+        //AJAX call and JSON parsing to access and store the data
+        var link= new XMLHttpRequest();
+        link.open("GET", mlbgamelink, true);
+        link.onreadystatechange = function () {
+            if (link.readyState === 4 && link.status === 200) {
+                var mlbData = JSON.parse(link.responseText);
+
+                games = mlbData.dates[0].games;
+                mlbIndex = 0;
+                highIndex =0;
+                displayCurrentTeam();
+                var selectedGame = games[mlbIndex];
+                var gamePk = selectedGame.gamePk;
+                retrieveGameHighlights(gamePk);
+
+
+            }
+        };
+        link.send();
+
+
+    }
+
+    //To play the teams according to the user requested date 
+    function displayCurrentTeam() {
+        if (games.length > 0) {
+            var currentGame = games[mlbIndex];
+            var teams = currentGame.teams;
+            var homeTeam = teams.home.team.name;
+            var awayTeam = teams.away.team.name;
+
+            document.getElementById("textBox1").value = homeTeam;
+            document.getElementById("textBox2").value = awayTeam;
+        }
+        else {
+            alert("no Games for this date ");
+            
+        }
+    }
+
+    //To retrieve the highlights data and link of the particular date that user entered 
+    function retrieveGameHighlights(gamePk) {
+        var highlightsLink = 'http://statsapi.mlb.com/api/v1/game/' + gamePk + '/content';
+
+        var link = new XMLHttpRequest();
+        link.open('GET', highlightsLink, true);
+        link.onreadystatechange = function () {
+            if (link.readyState === 4 && link.status === 200) {
+                var response = JSON.parse(link.responseText);
+                if (response.highlights && response.highlights.highlights && response.highlights.highlights.items) {
+                    highlights = response.highlights.highlights.items;
+                    highIndex = 0;
+                    displayHighlightTextbox(highIndex);
+                }
+            }
+        };
+        link.send();
+    }
+    
+    //function to get next game when next game button get clicked 
+    function nextGame() {
+        if (games.length > 0) {
+            mlbIndex = (mlbIndex + 1) % games.length;
+            displayCurrentTeam();
+        }
+    }
+
+    //function to get the previous game when the previous game button gets clicked 
+    function prevGame() {
+        if (games.length > 0) {
+            mlbIndex = (mlbIndex - 1 + games.length) % games.length;
+            displayCurrentTeam();
+        }
+    }
+    
+
+    
+    //function to display the highlight details  in the textbox
+    function displayHighlightTextbox(index) {
+        var highlightTextBox = document.getElementById("textBox");
+        var highlightDetails = highlights[index].headline;
+        highlightTextBox.value = highlightDetails;
+    }
+    
+    //function to show the previous highlight 
+    function pH() {
+        if (highlights.length > 0) {
+            highIndex = (highIndex - 1 + highlights.length) % highlights.length;
+            displayHighlightTextbox(highIndex);
+        }
+    }
+
+    //function to show the next highlight
+    function nH() {
+        if (highlights.length > 0) {
+            highIndex = (highIndex + 1) % highlights.length;
+            displayHighlightTextbox(highIndex);
+        }
+    }
+    
+    //function to display the highlight video
+    function Video() {
+        if (highlights.length > 0) {
+            var videoLink = highlights[highIndex].playbacks[0].url;
+            window.open(videoLink, '_blank').focus();
+
+        }
+    }
+</script>
+
+</html>
